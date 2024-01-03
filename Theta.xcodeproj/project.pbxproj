@@ -11,6 +11,7 @@
 		1609B4402B44A23700CD0099 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1609B43F2B44A23700CD0099 /* ContentView.swift */; };
 		1609B4422B44A23800CD0099 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1609B4412B44A23800CD0099 /* Assets.xcassets */; };
 		1609B4462B44A23800CD0099 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1609B4452B44A23800CD0099 /* Preview Assets.xcassets */; };
+		1609B44D2B44A3A400CD0099 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 1609B44C2B44A3A400CD0099 /* Shaders.metal */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,6 +21,7 @@
 		1609B4412B44A23800CD0099 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1609B4432B44A23800CD0099 /* Theta.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Theta.entitlements; sourceTree = "<group>"; };
 		1609B4452B44A23800CD0099 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		1609B44C2B44A3A400CD0099 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +56,7 @@
 			children = (
 				1609B43D2B44A23700CD0099 /* ThetaApp.swift */,
 				1609B43F2B44A23700CD0099 /* ContentView.swift */,
+				1609B44C2B44A3A400CD0099 /* Shaders.metal */,
 				1609B4412B44A23800CD0099 /* Assets.xcassets */,
 				1609B4432B44A23800CD0099 /* Theta.entitlements */,
 				1609B4442B44A23800CD0099 /* Preview Content */,
@@ -139,6 +142,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1609B44D2B44A3A400CD0099 /* Shaders.metal in Sources */,
 				1609B4402B44A23700CD0099 /* ContentView.swift in Sources */,
 				1609B43E2B44A23700CD0099 /* ThetaApp.swift in Sources */,
 			);
@@ -284,7 +288,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
@@ -292,7 +296,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = org.jacob.Theta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -322,7 +327,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
@@ -330,7 +335,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = org.jacob.Theta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
