@@ -10,17 +10,10 @@ import UIKit
 import MetalKit
 
 class GraphView: MTKView, MTKViewDelegate {
-    var equation: String? {
-        didSet {
-            if equation != oldValue {
-                pipelineState = nil
-                setNeedsDisplay()
-            }
-        }
-    }
+    var equation: String? { didSet { if equation != oldValue { resetPipelineState() } } }
 
-    private var graphLib: MTLLibrary!
-    private var commandQueue: MTLCommandQueue!
+    private var graphLib: MTLLibrary?
+    private var commandQueue: MTLCommandQueue?
     private var pipelineState: MTLRenderPipelineState?
 
     init() {
@@ -28,20 +21,17 @@ class GraphView: MTKView, MTKViewDelegate {
         self.delegate = self
         self.enableSetNeedsDisplay = true
         self.autoResizeDrawable = true
-        self.contentMode = .topLeft
 
-        guard let device,
-              let commandQueue = device.makeCommandQueue() else {
-            return
-        }
-        self.commandQueue = commandQueue
-
-        guard let graphURL = Bundle.main.url(forResource: "Graph", withExtension: "metallib"),
-              let graphLib = try? device.makeLibrary(URL: graphURL) else {
+        guard let device, device.supportsFunctionPointers else {
             return
         }
 
-        self.graphLib = graphLib
+        self.commandQueue = device.makeCommandQueue()
+
+        if let graphURL = Bundle.main.url(forResource: "Graph", withExtension: "metallib"),
+           let graphLib = try? device.makeLibrary(URL: graphURL) {
+            self.graphLib = graphLib
+        }
     }
 
     required init(coder: NSCoder) {
@@ -52,14 +42,19 @@ class GraphView: MTKView, MTKViewDelegate {
         self.setNeedsDisplay()
     }
 
-    func getPipelineState() -> MTLRenderPipelineState? {
-        if let pipelineState { return pipelineState }
+    func resetPipelineState() {
+        self.pipelineState = nil
+        setNeedsDisplay()
+    }
 
-        guard let equation else {
-            return nil
+    func buildPipelineStateIfNeeded() -> MTLRenderPipelineState? {
+        if let pipelineState {
+            return pipelineState
         }
-        guard let device else {
-            print("Failed to get device")
+
+        guard let equation,
+              let device,
+              let graphLib else {
             return nil
         }
 
@@ -74,8 +69,11 @@ class GraphView: MTKView, MTKViewDelegate {
 
         let sourceCompileOptions = MTLCompileOptions()
         sourceCompileOptions.fastMathEnabled = false
-        let library = try! device.makeLibrary(source: source, options: sourceCompileOptions)
-        let eq = library.makeFunction(name: "eq")!
+        guard let library = try? device.makeLibrary(source: source, options: sourceCompileOptions),
+              let eq = library.makeFunction(name: "eq") else {
+            print("Failed to build library")
+            return nil
+        }
 
         let linkedFunctions = MTLLinkedFunctions()
         linkedFunctions.functions = [eq]
@@ -86,21 +84,26 @@ class GraphView: MTKView, MTKViewDelegate {
         pipelineDescriptor.fragmentLinkedFunctions = linkedFunctions;
         pipelineDescriptor.colorAttachments[0].pixelFormat = colorPixelFormat
 
-        pipelineState = try! device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+        guard let pipelineState = try? device.makeRenderPipelineState(descriptor: pipelineDescriptor) else {
+            print("Failed to build pipeline state")
+            return nil
+        }
 
-        return pipelineState!
+        self.pipelineState = pipelineState
+
+        return pipelineState
     }
 
     func draw(in view: MTKView) {
-        guard let pipelineState = getPipelineState() else {
+        guard let device,
+              let currentRenderPassDescriptor,
+              let currentDrawable,
+              let commandQueue,
+              let pipelineState = buildPipelineStateIfNeeded(),
+              let commandBuffer = commandQueue.makeCommandBuffer() else {
             return
         }
 
-        let device = device!
-        let currentRenderPassDescriptor = currentRenderPassDescriptor!
-        let currentDrawable = currentDrawable!
-
-        let commandBuffer = commandQueue.makeCommandBuffer()!
         let commandEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: currentRenderPassDescriptor)!
 
         commandEncoder.setRenderPipelineState(pipelineState)
