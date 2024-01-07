@@ -19,11 +19,6 @@ class GraphView: MTKView, MTKViewDelegate {
         }
     }
 
-    private struct ScreenSize {
-        let width: Float
-        let height: Float
-    }
-
     private var commandQueue: MTLCommandQueue!
     private var pipelineState: MTLRenderPipelineState?
 
@@ -31,6 +26,8 @@ class GraphView: MTKView, MTKViewDelegate {
         super.init(frame: .zero, device: MTLCreateSystemDefaultDevice())
         self.delegate = self
         self.enableSetNeedsDisplay = true
+        self.autoResizeDrawable = true
+        self.contentMode = .topLeft
 
         guard let device,
               let commandQueue = device.makeCommandQueue() else {
@@ -44,13 +41,7 @@ class GraphView: MTKView, MTKViewDelegate {
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        draw(in: view, size: size)
-    }
-
-    func draw(in view: MTKView) {
-        let scale = UIScreen.main.scale
-        let size = CGSize(width: frame.size.width * scale, height: frame.size.height * scale)
-        draw(in: view, size: size)
+        self.setNeedsDisplay()
     }
 
     func getPipelineState() -> MTLRenderPipelineState? {
@@ -59,9 +50,7 @@ class GraphView: MTKView, MTKViewDelegate {
         guard let equation else {
             return nil
         }
-        guard let device,
-              let currentDrawable,
-              let currentRenderPassDescriptor else {
+        guard let device else {
             print("Failed to get device")
             return nil
         }
@@ -70,85 +59,27 @@ class GraphView: MTKView, MTKViewDelegate {
             #include <metal_stdlib>
             using namespace metal;
 
-            struct ScreenSize {
-                float width;
-                float height;
-            };
-
-            float eq(float x, float y) {
+            [[visible]] float eq(float x, float y) {
                 return y - (\(equation));
-            }
-
-            vertex float4 graphVertex(uint vertexID [[vertex_id]]) {
-                float3 vertices[6] = {
-                    float3(-1.0, -1.0, 0.0),
-                    float3(1.0, -1.0, 0.0),
-                    float3(-1.0, 1.0, 0.0),
-                    float3(1.0, -1.0, 0.0),
-                    float3(1.0, 1.0, 0.0),
-                    float3(-1.0, 1.0, 0.0),
-                };
-
-                float3 position = vertices[vertexID];
-
-                return float4(position, 1.0);
-            }
-
-            fragment half4 graphFragment(float4 position [[position]], constant ScreenSize &size [[buffer(1)]]) {
-                float scale = 50;
-                float thicknessAndMode = 2;
-                half4 currentColor = half4(0.0, 0.0, 1.0, 1.0);
-
-                float x = (position.x - size.width * 0.5) / scale;
-                float y = (size.height * 0.5 - position.y) / scale;
-                float dx = dfdx(x);
-                float dy = dfdy(y);
-                float z = eq(x, y);
-
-                // Evaluate all 4 adjacent +/- neighbor pixels
-                float2 zNeg = float2(eq(x - dx, y), eq(x, y - dy));
-                float2 zPos = float2(eq(x + dx, y), eq(x, y + dy));
-
-                // Compute the x and y slopes
-                float2 slope = (zPos - zNeg) * 0.5;
-
-                // Compute the gradient (the shortest point on the curve is assumed to lie in this direction)
-                float2 gradient = normalize(slope);
-
-                // Use the parabola "a*t^2 + b*t + z = 0" to approximate the function along the gradient
-                float a = dot((zNeg + zPos) * 0.5 - z, gradient * gradient);
-                float b = dot(slope, gradient);
-
-                // The distance to the curve is the closest solution to the parabolic equation
-                float distanceToCurve = 0.0;
-                float thickness = abs(thicknessAndMode);
-
-                if (abs(a) < 1.0e-6) {
-                    // Linear equation: "b*t + z = 0"
-                    distanceToCurve = abs(z / b);
-                } else {
-                    // Quadratic equation: "a*t^2 + b*t + z = 0"
-                    float discriminant = b * b - 4.0 * a * z;
-                    if (discriminant < 0.0) {
-                        distanceToCurve = thickness;
-                    } else {
-                        discriminant = sqrt(discriminant);
-                        distanceToCurve = min(abs(b + discriminant), abs(b - discriminant)) / abs(2.0 * a);
-                    }
-                }
-
-                // Antialias the edge using the distance from the curve
-                float edgeAlpha = clamp(abs(thickness) - distanceToCurve, 0.0, 1.0);
-
-                return currentColor * edgeAlpha;
             }
         """
 
-        let library = try! device.makeLibrary(source: source, options: nil)
+        let sourceCompileOptions = MTLCompileOptions()
+        sourceCompileOptions.fastMathEnabled = false
+        let library = try! device.makeLibrary(source: source, options: sourceCompileOptions)
+        let eq = library.makeFunction(name: "eq")!
+
+        let graphURL = Bundle.main.url(forResource: "Graph", 
+                                       withExtension: "metallib")!
+        let sharedLibrary = try! device.makeLibrary(URL: graphURL)
+
+        let linkedFunctions = MTLLinkedFunctions()
+        linkedFunctions.functions = [eq]
 
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.vertexFunction = library.makeFunction(name: "graphVertex")
-        pipelineDescriptor.fragmentFunction = library.makeFunction(name: "graphFragment")
+        pipelineDescriptor.vertexFunction = sharedLibrary.makeFunction(name: "graphVertex")
+        pipelineDescriptor.fragmentFunction = sharedLibrary.makeFunction(name: "graphFragment")
+        pipelineDescriptor.fragmentLinkedFunctions = linkedFunctions;
         pipelineDescriptor.colorAttachments[0].pixelFormat = colorPixelFormat
 
         pipelineState = try! device.makeRenderPipelineState(descriptor: pipelineDescriptor)
@@ -156,7 +87,7 @@ class GraphView: MTKView, MTKViewDelegate {
         return pipelineState!
     }
 
-    func draw(in view: MTKView, size: CGSize) {
+    func draw(in view: MTKView) {
         guard let pipelineState = getPipelineState() else {
             return
         }
@@ -170,9 +101,15 @@ class GraphView: MTKView, MTKViewDelegate {
 
         commandEncoder.setRenderPipelineState(pipelineState)
 
-        var screenSize = ScreenSize(width: Float(size.width), height: Float(size.height))
-        let sizeBuffer = device.makeBuffer(bytes: &screenSize, length: MemoryLayout<ScreenSize>.stride)!
-        commandEncoder.setFragmentBuffer(sizeBuffer, offset: 0, index: 1)
+        var offset = (Float(1), Float(1))
+        let offsetBuffer = device.makeBuffer(bytes: &offset,
+                                           length: MemoryLayout<(Float, Float)>.stride)!
+        commandEncoder.setFragmentBuffer(offsetBuffer, offset: 0, index: 1)
+
+        var size = (Float(drawableSize.width), Float(drawableSize.height))
+        let sizeBuffer = device.makeBuffer(bytes: &size,
+                                           length: MemoryLayout<(Float, Float)>.stride)!
+        commandEncoder.setFragmentBuffer(sizeBuffer, offset: 0, index: 2)
 
         commandEncoder.drawPrimitives(type: .triangle,
                                       vertexStart: 0,

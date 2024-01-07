@@ -1,24 +1,35 @@
-//
-//  Shaders.metal
-//  Theta
-//
-//  Created by Jacob Parker on 02/01/2024.
-//
-
 #include <metal_stdlib>
-#include <SwiftUI/SwiftUI_Metal.h>
+
+[[visible]] float eq(float x, float y);
+
 using namespace metal;
 
-float eq(float x, float y) {
-    return y - 10 * sin(x) / x;
+vertex float4 graphVertex(uint vertexID [[vertex_id]]) {
+    float3 vertices[6] = {
+        float3(-1.0, -1.0, 0.0),
+        float3(1.0, -1.0, 0.0),
+        float3(-1.0, 1.0, 0.0),
+        float3(1.0, -1.0, 0.0),
+        float3(1.0, 1.0, 0.0),
+        float3(-1.0, 1.0, 0.0),
+    };
+
+    float3 position = vertices[vertexID];
+
+    return float4(position, 1.0);
 }
 
-[[ stitchable ]] half4 graph(float2 position, half4 currentColor, float4 bounds) {
-    float scale = 20.0;
-    float thicknessAndMode = 2.0;
+fragment half4 graphFragment(float4 position [[position]],
+                             constant float2 &offset [[buffer(1)]],
+                             constant float2 &size [[buffer(2)]]) {
+    float scale = 50;
+    float thicknessAndMode = 2;
+    half4 currentColor = half4(0.0, 0.0, 1.0, 1.0);
 
-    float x = (position.x - bounds.z * 0.5) / scale;
-    float y = (bounds.w * 0.5 - position.y) / scale;
+    float2 coords = float2(position.x, position.y) - offset;
+
+    float x = (coords.x - size.x * 0.5) / scale;
+    float y = (size.y * 0.5 - coords.y) / scale;
     float dx = dfdx(x);
     float dy = dfdy(y);
     float z = eq(x, y);

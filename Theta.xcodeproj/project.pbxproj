@@ -11,7 +11,8 @@
 		1609B4402B44A23700CD0099 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1609B43F2B44A23700CD0099 /* ContentView.swift */; };
 		1609B4422B44A23800CD0099 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1609B4412B44A23800CD0099 /* Assets.xcassets */; };
 		1609B4462B44A23800CD0099 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1609B4452B44A23800CD0099 /* Preview Assets.xcassets */; };
-		1609B44D2B44A3A400CD0099 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 1609B44C2B44A3A400CD0099 /* Shaders.metal */; };
+		168E5A122B4B42CF0079965E /* Graph.metal in Sources */ = {isa = PBXBuildFile; fileRef = 168E5A112B4B42CF0079965E /* Graph.metal */; };
+		168E5A162B4B47B90079965E /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 168E5A152B4B47B90079965E /* MetalKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -21,7 +22,8 @@
 		1609B4412B44A23800CD0099 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1609B4432B44A23800CD0099 /* Theta.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Theta.entitlements; sourceTree = "<group>"; };
 		1609B4452B44A23800CD0099 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		1609B44C2B44A3A400CD0099 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
+		168E5A112B4B42CF0079965E /* Graph.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Graph.metal; sourceTree = "<group>"; };
+		168E5A152B4B47B90079965E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/iOSSupport/System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -29,6 +31,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				168E5A162B4B47B90079965E /* MetalKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -40,6 +43,7 @@
 			children = (
 				1609B43C2B44A23700CD0099 /* Theta */,
 				1609B43B2B44A23600CD0099 /* Products */,
+				168E5A142B4B47B90079965E /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -56,7 +60,7 @@
 			children = (
 				1609B43D2B44A23700CD0099 /* ThetaApp.swift */,
 				1609B43F2B44A23700CD0099 /* ContentView.swift */,
-				1609B44C2B44A3A400CD0099 /* Shaders.metal */,
+				168E5A112B4B42CF0079965E /* Graph.metal */,
 				1609B4412B44A23800CD0099 /* Assets.xcassets */,
 				1609B4432B44A23800CD0099 /* Theta.entitlements */,
 				1609B4442B44A23800CD0099 /* Preview Content */,
@@ -72,6 +76,14 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
+		168E5A142B4B47B90079965E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				168E5A152B4B47B90079965E /* MetalKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -82,6 +94,7 @@
 				1609B4362B44A23600CD0099 /* Sources */,
 				1609B4372B44A23600CD0099 /* Frameworks */,
 				1609B4382B44A23600CD0099 /* Resources */,
+				168E5A172B4B55BF0079965E /* Build Metal Library */,
 			);
 			buildRules = (
 			);
@@ -137,13 +150,36 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		168E5A172B4B55BF0079965E /* Build Metal Library */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Theta/Graph.metal",
+			);
+			name = "Build Metal Library";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Graph.metallib",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -x\n# Compiles the input source file (at $(SRCROOT)/Renderer/AAPLUserDylib.metal) and builds the dynamic\n# Metal library (at ${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/libUserDylib.metallib).\n# The \"Build Executable Metal Library\" script, which runs next, consumes the dynamic Metal library \n# output by this script.\nmetal -o $SCRIPT_OUTPUT_FILE_0 $SCRIPT_INPUT_FILE_0\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		1609B4362B44A23600CD0099 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1609B44D2B44A3A400CD0099 /* Shaders.metal in Sources */,
 				1609B4402B44A23700CD0099 /* ContentView.swift in Sources */,
+				168E5A122B4B42CF0079965E /* Graph.metal in Sources */,
 				1609B43E2B44A23700CD0099 /* ThetaApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -277,6 +313,10 @@
 				DEVELOPMENT_TEAM = YG77U88R8M;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/System/iOSSupport/System/Library/Frameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -316,6 +356,10 @@
 				DEVELOPMENT_TEAM = YG77U88R8M;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/System/iOSSupport/System/Library/Frameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
