@@ -19,6 +19,7 @@ class GraphView: MTKView, MTKViewDelegate {
         }
     }
 
+    private var graphLib: MTLLibrary!
     private var commandQueue: MTLCommandQueue!
     private var pipelineState: MTLRenderPipelineState?
 
@@ -34,6 +35,13 @@ class GraphView: MTKView, MTKViewDelegate {
             return
         }
         self.commandQueue = commandQueue
+
+        guard let graphURL = Bundle.main.url(forResource: "Graph", withExtension: "metallib"),
+              let graphLib = try? device.makeLibrary(URL: graphURL) else {
+            return
+        }
+
+        self.graphLib = graphLib
     }
 
     required init(coder: NSCoder) {
@@ -69,16 +77,12 @@ class GraphView: MTKView, MTKViewDelegate {
         let library = try! device.makeLibrary(source: source, options: sourceCompileOptions)
         let eq = library.makeFunction(name: "eq")!
 
-        let graphURL = Bundle.main.url(forResource: "Graph", 
-                                       withExtension: "metallib")!
-        let sharedLibrary = try! device.makeLibrary(URL: graphURL)
-
         let linkedFunctions = MTLLinkedFunctions()
         linkedFunctions.functions = [eq]
 
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.vertexFunction = sharedLibrary.makeFunction(name: "graphVertex")
-        pipelineDescriptor.fragmentFunction = sharedLibrary.makeFunction(name: "graphFragment")
+        pipelineDescriptor.vertexFunction = graphLib.makeFunction(name: "graphVertex")
+        pipelineDescriptor.fragmentFunction = graphLib.makeFunction(name: "graphFragment")
         pipelineDescriptor.fragmentLinkedFunctions = linkedFunctions;
         pipelineDescriptor.colorAttachments[0].pixelFormat = colorPixelFormat
 
