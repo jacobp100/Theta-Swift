@@ -21,8 +21,8 @@ vertex float4 graphVertex(uint vertexID [[vertex_id]]) {
 
 fragment half4 graphFragment(float4 position [[position]],
                              constant float2 &offset [[buffer(1)]],
-                             constant float2 &size [[buffer(2)]]) {
-    float scale = 50;
+                             constant float &scale [[buffer(2)]],
+                             constant float2 &size [[buffer(3)]]) {
     float thicknessAndMode = 2;
     half4 currentColor = half4(0.0, 0.0, 1.0, 1.0);
 
