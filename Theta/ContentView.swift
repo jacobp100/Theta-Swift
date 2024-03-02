@@ -9,10 +9,121 @@ import SwiftUI
 import UIKit
 import MetalKit
 
+protocol InfiniteCanvasDelegate: AnyObject {
+    var contentOffset: CGPoint { get set }
+    var zoomScale: CGFloat { get set }
+}
+
+class InfiniteCanvasInteraction: NSObject, UIGestureRecognizerDelegate {
+    var minZoom: CGFloat = 0.1
+    var maxZoom: CGFloat = 10.0
+
+    var view: UIView!
+    weak var delegate: InfiniteCanvasDelegate?
+
+    private var panGestureRecognizer: UIPanGestureRecognizer!
+    private var pinchGestureRecognizer: UIPinchGestureRecognizer!
+
+    private class ContentOffsetItem: NSObject, UIDynamicItem {
+        weak var parent: InfiniteCanvasInteraction?
+
+        var center: CGPoint {
+            get { parent?.delegate?.contentOffset ?? .zero }
+            set { parent?.delegate?.contentOffset = newValue }
+        }
+
+        // Not used
+        var bounds = CGRect(x: 0, y: 0, width: 1, height: 1)
+        var transform = CGAffineTransform.identity
+    }
+
+    private let animator = UIDynamicAnimator()
+    private let frictionDelegate = ContentOffsetItem()
+
+    init(for view: UIView) {
+        super.init()
+
+        self.view = view
+
+        frictionDelegate.parent = self
+
+        panGestureRecognizer = UIPanGestureRecognizer(target: self,
+                                                      action: #selector(didPan))
+        panGestureRecognizer.allowedScrollTypesMask = .all
+        panGestureRecognizer.delegate = self
+
+        pinchGestureRecognizer = UIPinchGestureRecognizer(target: self,
+                                                          action: #selector(didPinch))
+        pinchGestureRecognizer.delegate = self
+    }
+
+    func addGestureRecognizers() {
+        view.addGestureRecognizer(panGestureRecognizer)
+        view.addGestureRecognizer(pinchGestureRecognizer)
+    }
+
+    func removeGestureRecognizers() {
+        view.removeGestureRecognizer(panGestureRecognizer)
+        view.removeGestureRecognizer(pinchGestureRecognizer)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive event: UIEvent) -> Bool {
+        animator.removeAllBehaviors()
+        return true
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
+
+    @objc private func didPan(_ gesture: UIPanGestureRecognizer) {
+        guard let delegate else { return }
+
+        switch gesture.state {
+        case .changed:
+            let translation = gesture.translation(in: view)
+            delegate.contentOffset = CGPoint(x: delegate.contentOffset.x - translation.x / delegate.zoomScale,
+                                             y: delegate.contentOffset.y - translation.y / delegate.zoomScale)
+            gesture.setTranslation(.zero, in: view)
+        case .ended:
+            var velocity = gesture.velocity(in: view)
+            velocity = CGPoint(x: -velocity.x / delegate.zoomScale,
+                               y: -velocity.y / delegate.zoomScale)
+            let friction = UIDynamicItemBehavior(items: [frictionDelegate])
+            friction.resistance = 2
+            friction.addLinearVelocity(velocity, for: frictionDelegate)
+            friction.isAnchored = false
+            animator.addBehavior(friction)
+        case .possible, .began, .cancelled, .failed:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    @objc private func didPinch(_ gesture: UIPinchGestureRecognizer) {
+        guard let delegate else { return }
+
+        switch gesture.state {
+        case .changed:
+            let zoomScaleBefore = delegate.zoomScale
+            delegate.zoomScale = min(max(delegate.zoomScale * gesture.scale, minZoom), maxZoom)
+            let delta = delegate.zoomScale / zoomScaleBefore
+            delegate.contentOffset = CGPoint(x: delegate.contentOffset.x / delta,
+                                             y: delegate.contentOffset.y / delta)
+            gesture.scale = 1
+        case .possible, .began, .ended, .cancelled, .failed:
+            break
+        @unknown default:
+            break
+        }
+    }
+}
+
 class GraphView: MTKView, MTKViewDelegate {
     var equation: String? { didSet { if equation != oldValue { resetPipelineState() } } }
-    @Invalidating(.display) var origin: CGPoint = .zero
-    @Invalidating(.display) var scale: CGFloat = 1
+    @Invalidating(.display) var contentOffset: CGPoint = .zero
+    @Invalidating(.display) var zoomScale: CGFloat = 1
 
     private var graphLib: MTLLibrary?
     private var commandQueue: MTLCommandQueue?
@@ -111,20 +222,18 @@ class GraphView: MTKView, MTKViewDelegate {
         commandEncoder.setRenderPipelineState(pipelineState)
 
         let pixelScale = window?.screen.scale ?? 1
-        var offset = (Float(origin.x * pixelScale), Float(origin.y * pixelScale))
-        let offsetBuffer = device.makeBuffer(bytes: &offset,
-                                             length: MemoryLayout<(Float, Float)>.stride)!
-        commandEncoder.setFragmentBuffer(offsetBuffer, offset: 0, index: 1)
+        var contentOffset = (
+            Float(contentOffset.x * pixelScale - drawableSize.width / 2),
+            Float(contentOffset.y * pixelScale - drawableSize.height / 2)
+        )
+        let contentOffsetBuffer = device.makeBuffer(bytes: &contentOffset,
+                                                    length: MemoryLayout<(Float, Float)>.stride)!
+        commandEncoder.setFragmentBuffer(contentOffsetBuffer, offset: 0, index: 1)
 
-        var scale = Float(scale * 50)
-        let scaleBuffer = device.makeBuffer(bytes: &scale,
-                                            length: MemoryLayout<Float>.stride)!
-        commandEncoder.setFragmentBuffer(scaleBuffer, offset: 0, index: 2)
-
-        var size = (Float(drawableSize.width), Float(drawableSize.height))
-        let sizeBuffer = device.makeBuffer(bytes: &size,
-                                           length: MemoryLayout<(Float, Float)>.stride)!
-        commandEncoder.setFragmentBuffer(sizeBuffer, offset: 0, index: 3)
+        var zoomScale = Float(zoomScale * 50)
+        let zoomScaleBuffer = device.makeBuffer(bytes: &zoomScale,
+                                                length: MemoryLayout<Float>.stride)!
+        commandEncoder.setFragmentBuffer(zoomScaleBuffer, offset: 0, index: 2)
 
         commandEncoder.drawPrimitives(type: .triangle,
                                       vertexStart: 0,
@@ -138,41 +247,18 @@ class GraphView: MTKView, MTKViewDelegate {
     }
 }
 
-class ScrollableGraphView: GraphView, UIGestureRecognizerDelegate {
+class ScrollableGraphView: GraphView, InfiniteCanvasDelegate {
+    private var infiniteCanvasInteraction: InfiniteCanvasInteraction!
+
     override init() {
         super.init()
-
-        let panGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(didPan(_:)))
-        panGestureRecognizer.allowedScrollTypesMask = .all
-        panGestureRecognizer.delegate = self
-        addGestureRecognizer(panGestureRecognizer)
-
-        let pinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(didPinch(_:)))
-        pinchGestureRecognizer.delegate = self
-        addGestureRecognizer(pinchGestureRecognizer)
+        self.infiniteCanvasInteraction = InfiniteCanvasInteraction(for: self)
+        self.infiniteCanvasInteraction.delegate = self
+        self.infiniteCanvasInteraction.addGestureRecognizers()
     }
-
+    
     required init(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, 
-                           shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        true
-    }
-
-    @objc func didPan(_ sender: UIPanGestureRecognizer) {
-        guard sender.state == .changed else { return }
-        let translation = sender.translation(in: self)
-        origin = CGPoint(x: origin.x + translation.x,
-                         y: origin.y + translation.y)
-        sender.setTranslation(.zero, in: self)
-    }
-
-    @objc func didPinch(_ sender: UIPinchGestureRecognizer) {
-        guard sender.state == .changed else { return }
-        scale *= sender.scale
-        sender.scale = 1
     }
 }
 

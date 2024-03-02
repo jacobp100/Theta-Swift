@@ -20,16 +20,15 @@ vertex float4 graphVertex(uint vertexID [[vertex_id]]) {
 }
 
 fragment half4 graphFragment(float4 position [[position]],
-                             constant float2 &offset [[buffer(1)]],
-                             constant float &scale [[buffer(2)]],
-                             constant float2 &size [[buffer(3)]]) {
+                             constant float2 &contentOffset [[buffer(1)]],
+                             constant float &zoomScale [[buffer(2)]]) {
     float thicknessAndMode = 2;
     half4 currentColor = half4(0.0, 0.0, 1.0, 1.0);
 
-    float2 coords = float2(position.x, position.y) - offset;
+    float2 coords = float2(position.x, position.y) + contentOffset;
 
-    float x = (coords.x - size.x * 0.5) / scale;
-    float y = (size.y * 0.5 - coords.y) / scale;
+    float x = coords.x / zoomScale;
+    float y = -coords.y / zoomScale;
     float dx = dfdx(x);
     float dy = dfdy(y);
     float z = eq(x, y);
